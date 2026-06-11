@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from core.lead import Lead
 from core.researcher import Researcher
 from core.scorer import AIScorer, RuleBasedScorer
 from core.email_writer import AIEmailWriter, TemplateEmailWriter
@@ -14,16 +13,9 @@ def run_leadlens(
     product: str,
     use_ai: bool = True
 ):
-    """
-    The main LeadLens pipeline — runs end to end.
-    use_ai=True  → uses Groq AI for scoring and emails
-    use_ai=False → uses rules + template (fast, free, offline)
-    """
-
     print(f"\nLeadLens starting...")
     print(f"Target: {niche} in {location}\n")
 
-    # ── Step 1: Find real leads from the web ─────────────────────
     researcher = Researcher()
     leads = researcher.find_leads(niche, location, num_results=10)
 
@@ -33,11 +25,8 @@ def run_leadlens(
 
     print(f"Found {len(leads)} leads. Scoring now...")
 
-    # ── Step 2: Score leads ───────────────────────────────────────
     if use_ai:
-        scorer = AIScorer(
-            target_description=f"{niche} in {location}"
-        )
+        scorer = AIScorer(target_description=f"{niche} in {location}")
     else:
         scorer = RuleBasedScorer(
             target_industries=["SaaS", "Tech"],
@@ -46,23 +35,15 @@ def run_leadlens(
 
     ranked = scorer.score_all(leads)
 
-    # ── Step 3: Write outreach emails ────────────────────────────
     print("Writing personalised emails for qualified leads...\n")
 
     if use_ai:
-        writer = AIEmailWriter(
-            sender_name=sender_name,
-            product=product
-        )
+        writer = AIEmailWriter(sender_name=sender_name, product=product)
     else:
-        writer = TemplateEmailWriter(
-            sender_name=sender_name,
-            product=product
-        )
+        writer = TemplateEmailWriter(sender_name=sender_name, product=product)
 
     writer.write_all(ranked)
 
-    # ── Step 4: Display results ───────────────────────────────────
     qualified = [l for l in ranked if l.is_qualified()]
     not_qualified = [l for l in ranked if not l.is_qualified()]
 
