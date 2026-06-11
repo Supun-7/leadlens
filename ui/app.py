@@ -1,6 +1,9 @@
 import streamlit as st
 import sys
 import os
+import csv
+import io
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -126,3 +129,34 @@ if st.session_state.results:
     with tab2:
         for lead in not_qualified:
             st.write(f"❌ {lead.name} @ {lead.company} — Score: {lead.score}/100")
+
+    st.divider()
+    st.markdown("**Export results**")
+
+    output = io.StringIO()
+    writer_csv = csv.writer(output)
+
+    writer_csv.writerow([
+        "Name", "Company", "Industry", "Role",
+        "Website", "Score", "Qualified", "Email preview"
+    ])
+
+    for lead in results:
+        writer_csv.writerow([
+            lead.name,
+            lead.company,
+            lead.industry,
+            lead.role or "Unknown",
+            lead.website or "",
+            lead.score,
+            "Yes" if lead.is_qualified() else "No",
+            lead.outreach_email[:100] if lead.outreach_email else ""
+        ])
+
+    st.download_button(
+        label="Download leads as CSV",
+        data=output.getvalue(),
+        file_name=f"leadlens_{niche.replace(' ', '_')}_{location.replace(' ', '_')}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
