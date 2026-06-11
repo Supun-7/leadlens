@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 from core.lead import Lead
+from core.researcher import Researcher
 from core.scorer import AIScorer, RuleBasedScorer
 from core.email_writer import AIEmailWriter, TemplateEmailWriter
 
@@ -15,39 +16,27 @@ def run_leadlens(
 ):
     """
     The main LeadLens pipeline — runs end to end.
-
-    Parameters explain themselves because we named them well.
-    This is called SELF-DOCUMENTING CODE — a clean code principle.
-    You shouldn't need comments to understand what the parameters do.
-
-    use_ai=True  → uses Groq AI for scoring and emails (smart, slower)
-    use_ai=False → uses rules + template (fast, free, good for testing)
+    use_ai=True  → uses Groq AI for scoring and emails
+    use_ai=False → uses rules + template (fast, free, offline)
     """
 
     print(f"\nLeadLens starting...")
     print(f"Target: {niche} in {location}\n")
 
-    # ── Step 1: Create sample leads ──────────────────────────────
-    # In the next phase we'll replace this with real web scraping.
-    # For now, hardcoded leads let us test the full pipeline works.
-    # This is called a STUB — a placeholder that mimics real data.
-    leads = [
-        Lead("Sarah Chen",  "TechCorp",  "SaaS",   role="CEO",     website="techcorp.com"),
-        Lead("Rohan Silva", "RetailCo",  "Retail",  role="Manager", website=""),
-        Lead("Priya Nair",  "StartupX",  "Tech",    role="Founder", website="startupx.io"),
-        Lead("Amal Perera", "CloudBase", "SaaS",    role="CTO",     website="cloudbase.io"),
-        Lead("Nadia Khan",  "ShopFast",  "eCommerce", role="CEO",   website="shopfast.lk"),
-    ]
+    # ── Step 1: Find real leads from the web ─────────────────────
+    researcher = Researcher()
+    leads = researcher.find_leads(niche, location, num_results=10)
+
+    if not leads:
+        print("No leads found. Try a different niche or location.")
+        return []
 
     print(f"Found {len(leads)} leads. Scoring now...")
 
     # ── Step 2: Score leads ───────────────────────────────────────
-    # Notice how we choose scorer based on use_ai flag.
-    # Both scorers have the same interface — score_all(leads).
-    # This is polymorphism in production use.
     if use_ai:
         scorer = AIScorer(
-            target_description=f"{niche} companies in {location}"
+            target_description=f"{niche} in {location}"
         )
     else:
         scorer = RuleBasedScorer(
@@ -92,14 +81,6 @@ def run_leadlens(
 
     return ranked
 
-
-# ── Entry point ───────────────────────────────────────────────────
-# This pattern — if __name__ == "__main__" — is fundamental Python.
-# It means: only run this block if you're running THIS file directly.
-# If another file imports main.py, this block is skipped.
-#
-# Java equivalent: public static void main(String[] args) { }
-# Exact same concept — the entry point of the program.
 
 if __name__ == "__main__":
     run_leadlens(
