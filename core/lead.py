@@ -5,6 +5,8 @@ class Lead:
         self.website = website
         self.description = description
         self.location = location
+        self.google_rating = 0.0
+        self.review_count = 0
         self.score = 0
         self.notes = []
 
@@ -15,6 +17,8 @@ class Lead:
             "description": self.description,
             "location":self.location,
             "score": self.score,
-            "notes": self.notes
+            "notes": self.notes,
+            "google_rating": self.google_rating,
+            "review_count": self.review_count
         }
 

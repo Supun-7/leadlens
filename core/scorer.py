@@ -1,75 +1,43 @@
-from abc import ABC, abstractmethod
-from dotenv import load_dotenv
-from groq import Groq
-from core.lead import Lead
-import os
-
-load_dotenv()
-
-
-class BaseScorer(ABC):
-
-    @abstractmethod
-    def score(self, lead: Lead) -> int:
-        pass
-
-    def score_all(self, leads: list) -> list:
-        for lead in leads:
-            lead.score = self.score(lead)
-        return sorted(leads, key=lambda l: l.score, reverse=True)
-
-
-class RuleBasedScorer(BaseScorer):
-
-    def __init__(self, target_industries: list, target_roles: list):
-        self.target_industries = target_industries
-        self.target_roles = target_roles
-
-    def score(self, lead: Lead) -> int:
-        score = 0
-        if lead.industry in self.target_industries:
-            score += 40
-        if lead.role in self.target_roles:
-            score += 35
+class BaseScorer:
+    # To handle errors
+    def score(self,lead):
+        raise NotImplementedError("Subclass must implement score()")
+    
+class RuleBaseScorer(BaseScorer):
+    def score(self, lead):
+        points = 0
         if lead.website:
-            score += 15
-        if lead.notes:
-            score += 10
-        return min(score, 100)
+            points += 15
 
+        if lead.description:
+            points += 10
+        
+        if lead.google_rating > 4.5:
+            points += 20
+        
+        elif 2.5 <= lead.google_rating < 4.5:
+            points += 10
 
-class AIScorer(BaseScorer):
+        elif 1.5 <= lead.google_rating < 2.5:
+            points += 5
+        
+        elif 0 <= lead.google_rating < 1.5:
+            points -= 5
 
-    def __init__(self, target_description: str):
-        self.client = Groq(api_key=os.getenv('GROQ_API_KEY'))
-        self.target_description = target_description
+        if lead.review_count >= 15:
+            points += 20
+        
+        elif 10 <= lead.review_count < 15:
+            points += 15
+        
+        elif 5 <= lead.review_count < 10:
+            points += 10
 
-    def score(self, lead: Lead) -> int:
-        prompt = f"""You are a lead qualification expert.
+        elif 0 <= lead.review_count < 5:
+            points += 5
 
-Score this lead from 0 to 100 based on how well they match the ideal customer.
+        lead.score = points
 
-Ideal customer: {self.target_description}
+        return lead
+    
 
-Lead details:
-- Name: {lead.name}
-- Company: {lead.company}
-- Industry: {lead.industry}
-- Role: {lead.role or 'Unknown'}
-- Website: {lead.website or 'None'}
-- Notes: {', '.join(lead.notes) or 'None'}
-
-Reply with a SINGLE number between 0 and 100. Nothing else."""
-
-        try:
-            response = self.client.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=10,
-                temperature=0.1
-            )
-            raw = response.choices[0].message.content.strip()
-            return int(raw)
-        except Exception as e:
-            print(f"Scoring error for {lead.name}: {e}")
-            return 0
