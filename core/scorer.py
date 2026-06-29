@@ -40,4 +40,8 @@ class RuleBaseScorer(BaseScorer):
 
         return lead
     
-
+    def score_all(self,leads):
+        for lead in leads:
+            self.score(lead)
+        return leads
+        
